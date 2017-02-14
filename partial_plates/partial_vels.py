@@ -1,12 +1,16 @@
 import numpy as np
+
+import pyximport; pyximport.install()
+import partial_plates.partial_plate_gofs
+
 from .partial_plate_gofs import calc_gofs
 
 
-def partial_plate_vels(plate, lons, lats, coeff=1., poles_df=poles_df):
+def partial_plate_vels(plate, lons, lats, coeff=1., poles_df=None):
     return coeff * np.array(plate_vels(plate, lons, lats, poles_df))
 
 
-def multiplate_vels(plates, lons, lats, coeffs, poles_df=poles_df):
+def multiplate_vels(plates, lons, lats, coeffs, poles_df=None):
     if len(plates) != len(coeffs):
         raise Exception('need same number of plates and coeffs')
     
