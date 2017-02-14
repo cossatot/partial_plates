@@ -54,7 +54,7 @@ rigid macroplate motion, we can accomplish several things:
 3. *Identify areas of anomalous or independent motion:*
    
 
-![Central American partial plates]('./c_am_tricolor.png')
+![Central American partial plates](./c_am_tricolor.png)
 
 ### Aims
 
