@@ -37,8 +37,9 @@ def rotate_vecs(dx, dy, strike_rad):
 
 class FaultSeg(object):
     def __init__(self, lon0=0., lat0=0., lon1=0., lat1=0., 
-                 dip=45., rake=90., strike=None, locking_depth=15.,
-                 ss=0., ds=0., ts=0.):
+                 dip=45., rake=90., strike=None, top_depth=0.,
+                 bottom_depth=15., ss=0., ds=0., ts=0.):
+
         self.lat0 = lat0
         self.lon0 = lon0
         self.lat1 = lat1
@@ -48,7 +49,8 @@ class FaultSeg(object):
         self.ts = ts
         self.dip = dip
         self.rake = rake
-        self.locking_depth = locking_depth
+        self.top_depth = top_depth
+        self.bottom_depth = bottom_depth
         self.lat0_r = np.radians(lat0)
         self.lon0_r = np.radians(lon0)
         self.lat1_r = np.radians(lat1)
@@ -68,8 +70,9 @@ class FaultSeg(object):
         
         okada_params = {'L':self.length,
                         'delta': self.dip_r,
-                        'd' : self.locking_depth,
-                        'W' : self.locking_depth / np.sin(self.dip_r),
+                        'd' : self.bottom_depth,
+                        'W' : (self.bottom_depth - self.top_depth) \
+                               / np.sin(self.dip_r),
                         #'U' : U_from_rake_slip(rake),
                         'U' : (self.ss, self.ds, self.ts),
                         'coords' : np.array([[self.lon0, self.lat0],
@@ -122,7 +125,6 @@ def rotate_vecs(dx, dy, strike):
     dn = dx * np.sin(ang) + dy * np.cos(ang)
     
     return de, dn
-
 
 
 def sind(angle):
@@ -202,42 +204,45 @@ def fault_oblique_merc(station_coords, fault_seg, R=6371.):
     return x, y
 
 
-def okada85(x, y, L, W, d, delta, U, tol=1e-10):                                                
-    '''                                                                           
-    Description:                                                                  
-      computes displacements at points (x,y) for a fault with                
-      width W, length L, and depth d.  The fault has one end on the               
-      origin and the other end at (x=L,y=0).  Slip on the fault is                
-      described by U.                                                             
-    Arguments:                                                                    
-      x: along strike coordinate of output locations (can be a vector)            
-      y: perpendicular to strike coordinate of output locations (can be a vector) 
-      L: length of fault                                                          
-      W: width of fault                                                           
-      d: depth of the bottom of the fault (a fault which ruptures the surface     
-         with have d=W, and d<W will give absurd results)                         
-      delta: fault dip.  0<delta<pi/2.0 will dip in the -y direction. and         
-             pi/2<delta<pi will dip in the +y direction... i think.               
-      U: a three components vector with strike-slip, dip-slip, and tensile        
-         components of slip                                                       
-                                                                                  
-    output:                                                                       
+def okada85(x, y, L, W, d, delta, U, tol=1e-10):
+    '''
+    Description:
+      computes displacements at points (x,y) for a fault with
+      width W, length L, and depth d.  The fault has one end on the
+      origin and the other end at (x=L,y=0).  Slip on the fault is
+      described by U.
+
+    Arguments:
+      x: along strike coordinate of output locations (can be a vector)
+      y: perpendicular to strike coordinate of output locations (can be a 
+         vector)
+      L: length of fault
+      W: width of fault
+      d: depth of the bottom of the fault (a fault which ruptures the surface
+         with have d=W, and d<W will give absurd results)
+      delta: fault dip.  0<delta<pi/2.0 will dip in the -y direction. and
+             pi/2<delta<pi will dip in the +y direction... i think.
+      U: a three components vector with strike-slip, dip-slip, and tensile
+         components of slip
+
+    output:
       tuple where each components is a vector of displacement in the x, y, or z  
-      direction                      
+      direction
 
     Written by Trever Hines.
-    '''                                                                           
-    mu = 3.2e10                                                                   
-    lamb = 3.2e10                                                                 
-    x = np.array(x)                                                               
-    y = np.array(y)                                                               
-    cosdel = np.cos(delta)                                                        
-    sindel = np.sin(delta)                                                        
-    p = y*cosdel + d*sindel                                                       
-    q = y*sindel - d*cosdel                                                       
-    r = np.sqrt(np.power(y,2.0) +                                                 
-                np.power(x,2.0) +                                                 
+    '''
+    mu = 3.2e10
+    lamb = 3.2e10
+    x = np.array(x)
+    y = np.array(y)
+    cosdel = np.cos(delta)
+    sindel = np.sin(delta)
+    p = y*cosdel + d*sindel
+    q = y*sindel - d*cosdel
+    r = np.sqrt(np.power(y,2.0) +
+                np.power(x,2.0) +
                 np.power(d,2.0))
+
     def f(eps,eta):
         y_til = eta*cosdel + q*sindel
         d_til = eta*sindel - q*cosdel
