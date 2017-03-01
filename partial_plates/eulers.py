@@ -3,6 +3,7 @@
 import numpy as np
 
 def get_aa(lat_pole=None, lat_site=None, lon_pole=None, lon_site=None):
+    """Cosine distance formula"""
     
     aa =  np.arccos(np.sin(lat_site) * np.sin(lat_pole)
                      + np.cos(lat_pole) * np.cos(lat_site) 
@@ -10,9 +11,18 @@ def get_aa(lat_pole=None, lat_site=None, lon_pole=None, lon_site=None):
     return aa
 
 
-def get_C(lat_pole=None, lon_pole=None, lon_site = None, aa=None):
+def get_C(lat_pole=None, lon_pole=None, lon_site=None, lat_site=None):
+    aa = get_aa(lat_pole=lat_pole, lon_pole=lon_pole, 
+                lat_site=lat_site, lon_site=lon_site)
+
     C = np.arcsin(np.cos(lat_pole) * np.sin(lon_pole - lon_site)
                   / np.sin(aa))
+
+    if np.isscalar(C):
+        if lat_site > lat_pole:
+            C = np.pi - C
+    else:
+        C[lat_site > lat_pole] = np.pi - C
     
     return C
 
@@ -44,7 +54,8 @@ def get_v_beta_from_euler(lat_pole=None, lat_site=None, lon_pole=None,
     aa = get_aa(lat_pole=lat_pole, lat_site=lat_site, lon_pole=lon_pole,
               lon_site=lon_site)
     
-    C = get_C(lat_pole=lat_pole, lon_pole=lon_pole, lon_site=lon_site, aa=aa)
+    C = get_C(lat_pole=lat_pole, lon_pole=lon_pole, 
+              lon_site=lon_site, lat_site=lat_site)
     
     v = get_v(rotation_rate, aa)
     
