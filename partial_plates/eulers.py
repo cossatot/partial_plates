@@ -59,7 +59,7 @@ def azimuth(lon0=None, lat0=None, lon1=None, lat1=None, input_coords='radians'):
         if lat0 > lat1:
             C = np.pi - C
     else:
-        C[lat0 > lat0] = np.pi - C
+        C[lat0 > lat1] = np.pi - C
     
     return C
 

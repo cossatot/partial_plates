@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.sparse.linalg import lsqr
+import pandas as pd
 
 
 def okada_slip(fault_seg, station_coords):
