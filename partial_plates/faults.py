@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse.linalg import lsqr
 
 
 def okada_slip(fault_seg, station_coords):
@@ -147,11 +148,12 @@ def fault_oblique_merc(station_coords, fault_seg, R=6371.):
     '''
     Carries out oblique Mercator projection of the data contained in arrays
     `lon` and `lat`, such that the x-axis is parallel to a fault trace and the
-    y-axis is perpendicular. The fault trace is defined using endpoint coordinates
-    lon1, lat1, lon2, lat2.
+    y-axis is perpendicular. The fault trace is defined using endpoint
+    coordinates lon1, lat1, lon2, lat2.
     
     From Meade et al., Blocks, 'faultobliquemerc.m'.
     '''
+    
     #todo: make it work for scalar coords
     lon = station_coords[:,0]
     lat = station_coords[:,1]
@@ -326,3 +328,192 @@ def okada85(x, y, L, W, d, delta, U, tol=1e-10):
     return (disp1,disp2,disp3)
 
 
+def slope(x0, y0, x1, y1):
+    '''
+    Returns the slope of a line defined by
+    (x0, y0) and (x1, y1).
+    '''
+
+    if x0 != x1:
+        return (y1 - y0) / (x1 - x0)
+    else:
+        return np.inf
+    
+
+def y_int(x0, y0, slope):
+    '''
+    Returns the y-intercept of a line defined by a point (x0, y0) and a slope.
+    '''
+
+    return y0 - slope * x0
+
+
+def slope_int(x0, y0, x1, y1):
+    '''
+    Returns the slope (m) and intercept (b) of a line defined by two points
+    (x0, y0) and (x1, y1).
+    '''
+    
+    m = slope(x0, y0, x1, y1)
+    b = y_int(x0, y0, m)
+    
+    return m, b
+
+
+def shear_step(rs, thetas, r0, theta0, r1, theta1, dC0=0., dC1=1., side='hi'):
+    """
+    Sets changes in plate velocity C associated with simple shear on
+    a fault. 
+    """
+    
+    theta_min = min(theta0, theta1)
+    theta_max = max(theta0, theta1)
+    
+    m, b = slope_int(theta0, r0, theta1, r1)
+    
+    output = np.zeros(rs.shape)
+    
+    theta_lo = (thetas < theta_min)
+    theta_hi = (thetas > theta_max)
+    
+    r_theta_hi = ( (thetas >= theta_min) & (thetas <= theta_max)
+                    &(rs >= m * thetas + b) )
+    
+    r_theta_lo = ( (thetas >= theta_min) & (thetas <= theta_max)
+                    &(rs < m * thetas + b) )
+    
+    # These are outside of the azimuthal range of the fault and shouldn't
+    # be affected by it; however by uncommenting these lines the function can
+    # modify these points.
+    #output[theta_lo] = dC0
+    #output[theta_hi] = dC0
+    
+    if side == 'hi':
+        output[r_theta_lo] = dC0
+        output[r_theta_hi] = dC1
+    elif side == 'lo':
+        output[r_theta_lo] = dC1
+        output[r_theta_hi] = dC0
+    
+    return output
+
+
+def short_step(rs, thetas, r0, theta0, r1, theta1, dC0=0., dC1=1., side='hi'):
+    r_min = min(r0, r1)
+    r_max = max(r0, r1)
+    
+    m, b = slope_int(theta0, r0, theta1, r1)
+        
+    output = np.zeros(thetas.shape)
+    
+    r_lo = (rs < r_min)
+    r_hi = (rs > r_max)
+    
+    theta_r_hi = ( (rs >= r_min) & (rs <= r_max)
+                    &(rs >= m * thetas + b) )
+    
+    theta_r_lo = ( (rs >= r_min) & (rs <= r_max)
+                    &(rs < m * thetas + b) )
+
+    # These are outside of the azimuthal range of the fault and shouldn't
+    # be affected by it; however by uncommenting these lines the function can
+    # modify these points.
+    #output[r_lo] = dC0
+    #output[r_hi] = dC0
+    
+    if side == 'hi':
+        output[theta_r_lo] = dC0
+        output[theta_r_hi] = dC1
+    elif side == 'lo':
+        output[theta_r_lo] = dC1
+        output[theta_r_hi] = dC0
+    
+    return output
+
+
+def build_model_matrix(vels, faults):
+
+    """
+    Build a model matrix G for a fault slip rate inversion.
+
+    Arguments:
+    vels: A Pandas dataframe of plate velocities (i.e. scalars of plate motion)
+    faults: A Pandas dataframe of faults.
+
+    `vels` needs to have the following columns:
+        r: the radial (or arc) distance between the site and the pole
+        az: the azimuth between the pole and the site
+
+    `faults` needs to have the following columns:
+        r0: the radial (or arc) distance between fault endpoint 0 and the pole
+        r1: the radial (or arc) distance between fault endpoint 1 and the pole
+        az0: the azimuth between fault endpoint 0 and the pole
+        az1: the azimuth between fault endpoint 1 and the pole
+
+    Returns a (n_vels, n_faults) DataFrame with labeled rows and cols, to be
+    used as a model matrix for a linear least squares inversion.
+    
+    """
+
+    n_faults = len(faults)
+    n_vels = len(vels)
+    G = pd.DataFrame(np.zeros((n_vels, n_faults)),
+                     columns=faults.index,
+                     index=vels.index)
+    G.index.names = ['vel']
+    G.columns.names = ['fault']
+    
+    G_shear = G.copy(deep=True)
+    G_short = G.copy(deep=True)
+    
+    # find affected sites, fill in rows - do shear/short with dC1=1
+    for i, row in faults.iterrows():
+        G_shear.ix[:, i] = shear_step(vels.r.values, vels.az.values,
+                                      row.r0, row.az0, row.r1, row.az1,
+                                      side='hi', dC1=1.)
+        
+        G_short.ix[:, i] = short_step(vels.r.values, vels.az.values,
+                                      row.r0, row.az0, row.r1, row.az1,
+                                      side='hi', dC1=1.)
+    
+    G = np.add(G_shear, G_short) / 2.
+    
+    return G
+
+
+def do_slip_rate_inversion(vels, faults):
+    """
+    Arguments:
+
+    vels: A Pandas dataframe of plate velocities (i.e. scalars of plate motion)
+    faults: A Pandas dataframe of faults.
+
+    `vels` needs to have the following columns:
+        r: the radial (or arc) distance between the site and the pole
+        az: the azimuth between the pole and the site
+        c: partial plate coefficients
+
+    `faults` needs to have the following columns:
+        r0: the radial (or arc) distance between fault endpoint 0 and the pole
+        r1: the radial (or arc) distance between fault endpoint 1 and the pole
+        az0: the azimuth between fault endpoint 0 and the pole
+        az1: the azimuth between fault endpoint 1 and the pole
+
+    Returns:
+
+    fault_rates: A Pandas Series with fault slip rates (in partial plate terms)
+                 for each fault. Fault names are the index.
+
+    c_modeled: Modeled partial plate velocities.
+
+    Uses scipy.sparse.linalg.lsqr for the inversion.
+
+    """
+
+    G = build_model_matrix(vels, faults)
+
+    fault_rates = pd.Series(lsqr(G.values, vels.c.values)[0], 
+                            index=faults.index)
+    c_mod = pd.Series(G.values.dot(fault_rates.values), index=vels.index)
+
+    return fault_rates, c_mod
