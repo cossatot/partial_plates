@@ -15,6 +15,10 @@ def arc_distance(lat0=None, lat1=None, lon0=None, lon1=None, R=1.,
     Returns arc distance.
     """
 
+    if input_coords == 'degrees':
+        lon0, lat0 = np.radians(lon0), np.radians(lat0)
+        lon1, lat1 = np.radians(lon1), np.radians(lat1)
+
     # spherical law of cosines
     aa =  np.arccos(np.sin(lat1) * np.sin(lat0)
                      + np.cos(lat0) * np.cos(lat1) 
@@ -25,17 +29,27 @@ def arc_distance(lat0=None, lat1=None, lon0=None, lon1=None, R=1.,
     return arc_distance
 
 
-def azimuth(lon0=None, lat0=None, lon1=None, lat1=None):
+def azimuth(lon0=None, lat0=None, lon1=None, lat1=None, input_coords='radians'):
 
     """
-    
+    Returns the azimuth between (lon0, lat0) and (lon1, lat1). For plate
+    velocity calculations, (lon1, lat1) should be the pole while (lon0, lat0)
+    should be the site(s). Either pair can be an array.
+
     Arguments:
 
     lon0, lat0: Longitude and latitude of the site.
     lon1, lat1: Longitude and latitude of the pole or of the second
                 set of points.
 
+    `input_coords` specifies whether the inputs are in radians (default)
+    or degrees.
+
     """
+
+    if input_coords == 'degrees':
+        lon0, lat0 = np.radians(lon0), np.radians(lat0)
+        lon1, lat1 = np.radians(lon1), np.radians(lat1)
 
     aa = arc_distance(lat1=lat1, lon1=lon1, lat0=lat0, lon0=lon0)
 
@@ -85,42 +99,8 @@ def get_v_beta_from_euler(lat1=None, lat0=None, lon1=None,
     return v, beta
 
 
-def arc_rad_dir(lat_site=None, lat_pole=None, lon_site=None, lon_pole=None):
-    
-    return np.arctan( (lon_pole - lon_site) / (lat_pole - lat_site) )
-
-
-def get_arc_strike(lat_site=None, lat_pole=None, lon_site=None, lon_pole=None):
-    
-    theta = arc_rad_dir(lat_site = lat_site, lat_pole = lat_pole, 
-                        lon_site = lon_site, lon_pole = lon_pole)
-    
-    return theta + np.pi/2
-
-
 def get_v_az(ve, vn):
     return np.arctan2(vn, ve) + np.pi/2
-
-
-def arc_par_v(ve, vn, arc_strike):
-    v_mag = np.sqrt(ve**2 + vn**2)
-    v_az = get_v_az(ve, vn)
-    
-    return -v_mag * np.cos(v_az - arc_strike)
-    
-    
-def get_arc_par_vels(lat_site=None, lat_pole=None, lon_site=None,
-                     lon_pole=None, ve=None, vn=None, return_components=False):
-    
-    arc_strike = get_arc_strike(lat_site, lat_pole, lon_site, lon_pole)
-    
-    par_v = arc_par_v(ve, vn, arc_strike)
-
-    if return_components==True:
-        ve_par, vn_par = get_ve_vn_from_v_beta(par_v, arc_strike)
-        return ve_par, vn_par
-    else:
-        return par_v
 
 
 def angle_difference(angle1, angle2, return_abs = False, units = 'radians'):
