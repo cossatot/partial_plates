@@ -2,27 +2,50 @@
 
 import numpy as np
 
-def get_aa(lat_pole=None, lat_site=None, lon_pole=None, lon_site=None):
-    """Cosine distance formula"""
+def arc_distance(lat0=None, lat1=None, lon0=None, lon1=None, R=1.,
+                 input_coords='radians'):
+    """
+    Gets the arc distance between (lon0, lat0) and (lon1, lat1).
+    Either pair can be a pair or an array. R is the radius of the
+    sphere. Uses the formula from the spherical law of cosines.
+
+    `input_coords` specifies whether the inputs are in radians (default)
+    or degrees.
+
+    Returns arc distance.
+    """
+
+    # spherical law of cosines
+    aa =  np.arccos(np.sin(lat1) * np.sin(lat0)
+                     + np.cos(lat0) * np.cos(lat1) 
+                     * np.cos(lon0 - lon1) )
+
+    arc_distance = aa * R
+
+    return arc_distance
+
+
+def azimuth(lon0=None, lat0=None, lon1=None, lat1=None):
+
+    """
     
-    aa =  np.arccos(np.sin(lat_site) * np.sin(lat_pole)
-                     + np.cos(lat_pole) * np.cos(lat_site) 
-                     * np.cos(lon_pole - lon_site) )
-    return aa
+    Arguments:
 
+    lon0, lat0: Longitude and latitude of the site.
+    lon1, lat1: Longitude and latitude of the pole or of the second
+                set of points.
 
-def get_C(lat_pole=None, lon_pole=None, lon_site=None, lat_site=None):
-    aa = get_aa(lat_pole=lat_pole, lon_pole=lon_pole, 
-                lat_site=lat_site, lon_site=lon_site)
+    """
 
-    C = np.arcsin(np.cos(lat_pole) * np.sin(lon_pole - lon_site)
-                  / np.sin(aa))
+    aa = arc_distance(lat1=lat1, lon1=lon1, lat0=lat0, lon0=lon0)
+
+    C = np.arcsin(np.cos(lat1) * np.sin(lon1 - lon0)  / np.sin(aa))
 
     if np.isscalar(C):
-        if lat_site > lat_pole:
+        if lat0 > lat1:
             C = np.pi - C
     else:
-        C[lat_site > lat_pole] = np.pi - C
+        C[lat0 > lat0] = np.pi - C
     
     return C
 
@@ -48,14 +71,12 @@ def get_ve_vn_from_v_beta(v, beta, return_mm = False):
     return ve, vn
 
 
-def get_v_beta_from_euler(lat_pole=None, lat_site=None, lon_pole=None, 
-                          lon_site=None, rotation_rate=None):
+def get_v_beta_from_euler(lat1=None, lat0=None, lon1=None, 
+                          lon0=None, rotation_rate=None):
     
-    aa = get_aa(lat_pole=lat_pole, lat_site=lat_site, lon_pole=lon_pole,
-              lon_site=lon_site)
+    aa = arc_distance(lat1=lat1, lat0=lat0, lon1=lon1, lon0=lon0)
     
-    C = get_C(lat_pole=lat_pole, lon_pole=lon_pole, 
-              lon_site=lon_site, lat_site=lat_site)
+    C = azimuth(lat1=lat1, lon1=lon1, lon0=lon0, lat0=lat0)
     
     v = get_v(rotation_rate, aa)
     
