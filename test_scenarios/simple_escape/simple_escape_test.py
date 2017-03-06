@@ -79,7 +79,7 @@ faults['az1'] = 0.
 for i, row in faults.iterrows():
     az0, az1 = pp.eulers.azimuth(np.array((row.lon0, row.lon1)), 
                                  np.array((row.lat0, row.lat1)),
-                                 pole_lon, pole_lat)
+                                 pole_lon, pole_lat, input_coords='degrees')
     faults.ix[i, 'az0'] = az0
     faults.ix[i, 'az1'] = az1
 
@@ -89,12 +89,14 @@ faults['r1'] = 0.
 for i, row in faults.iterrows():
     r0, r1 = pp.eulers.arc_distance(np.array((row.lon0, row.lon1)), 
                                     np.array((row.lat0, row.lat1)),
-                                    pole_lon, pole_lat)
+                                    pole_lon, pole_lat, input_coords='degrees')
     faults.ix[i, 'r0'] = r0
     faults.ix[i, 'r1'] = r1
 
-vels['r'] = pp.eulers.arc_distance(vels.lon, vels.lat, pole_lon, pole_lat)
-vels['az'] = pp.eulers.azimuth(vels.lon, vels.lat, pole_lon, pole_lat)
+vels['r'] = pp.eulers.arc_distance(vels.lon, vels.lat, pole_lon, pole_lat,
+                                   input_coords='degrees')
+vels['az'] = pp.eulers.azimuth(vels.lon, vels.lat, pole_lon, pole_lat,
+                               input_coords='degrees')
 
 
 # do inversion
