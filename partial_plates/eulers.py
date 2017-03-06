@@ -2,7 +2,7 @@
 
 import numpy as np
 
-def arc_distance(lat0=None, lat1=None, lon0=None, lon1=None, R=1.,
+def arc_distance(lon0=None, lat0=None, lon1=None, lat1=None, R=1.,
                  input_coords='radians'):
     """
     Gets the arc distance between (lon0, lat0) and (lon1, lat1).
@@ -20,16 +20,17 @@ def arc_distance(lat0=None, lat1=None, lon0=None, lon1=None, R=1.,
         lon1, lat1 = np.radians(lon1), np.radians(lat1)
 
     # spherical law of cosines
-    aa =  np.arccos(np.sin(lat1) * np.sin(lat0)
+    aa =  np.arccos(np.sin(lat0) * np.sin(lat1)
                      + np.cos(lat0) * np.cos(lat1) 
-                     * np.cos(lon0 - lon1) )
+                     * np.cos(lon1 - lon0) )
 
     arc_distance = aa * R
 
     return arc_distance
 
 
-def azimuth(lon0=None, lat0=None, lon1=None, lat1=None, input_coords='radians'):
+def azimuth(lon0=None, lat0=None, lon1=None, lat1=None, 
+            input_coords='radians'):
 
     """
     Returns the azimuth between (lon0, lat0) and (lon1, lat1). For plate
