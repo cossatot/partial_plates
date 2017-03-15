@@ -109,7 +109,7 @@ def get_cm(val, vmin=0., vmax=1., cmap=cm.viridis):
 
 
 f = plt.figure(figsize=(11,6))
-ax = f.add_subplot(111)
+ax = f.add_subplot(121)
 
 s = ax.scatter(vels.lon, vels.lat, c=mod_vels,
                vmin=0., vmax=1.,
@@ -119,5 +119,19 @@ plt.colorbar(s)
 for i, row in faults.iterrows():
     col = get_cm(fault_rates[i], vmin=-1, vmax=1, cmap=cm.PiYG)
     ax.plot((row.lon0, row.lon1), (row.lat0, row.lat1), color=col)
+
+ax1 = f.add_subplot(122, 
+                    #polar=True
+                    )
+
+s = ax1.scatter(vels.az, vels.r, c=mod_vels,
+               vmin=0., vmax=1.,
+               cmap='plasma', s=30, lw=0)
+plt.colorbar(s)
+
+for i, row in faults.iterrows():
+    col = get_cm(fault_rates[i], vmin=-1, vmax=1, cmap=cm.PiYG)
+    ax1.plot((row.az0, row.az1), (row.r0, row.r1), color=col)
+
 
 plt.show()

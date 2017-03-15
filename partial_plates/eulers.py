@@ -60,7 +60,9 @@ def azimuth(lon0=None, lat0=None, lon1=None, lat1=None,
         if lat0 > lat1:
             C = np.pi - C
     else:
-        C[lat0 > lat1] = np.pi - C
+        low_lats = (lat0 > lat1)
+        if np.any(low_lats):
+            C[low_lats] = np.pi - C
     
     return C
 

@@ -482,12 +482,14 @@ def build_model_matrix(vels, faults):
     return G
 
 
-def do_slip_rate_inversion(vels, faults):
+def do_slip_rate_inversion(vels, faults, damp=0.):
     """
     Arguments:
 
     vels: A Pandas dataframe of plate velocities (i.e. scalars of plate motion)
     faults: A Pandas dataframe of faults.
+    damp: Damping factor for Tikhonov regularization (defaults to 0, no
+          regularization).
 
     `vels` needs to have the following columns:
         r: the radial (or arc) distance between the site and the pole
@@ -499,6 +501,9 @@ def do_slip_rate_inversion(vels, faults):
         r1: the radial (or arc) distance between fault endpoint 1 and the pole
         az0: the azimuth between fault endpoint 0 and the pole
         az1: the azimuth between fault endpoint 1 and the pole
+
+    `damp` is a non-negative float.
+
 
     Returns:
 
@@ -513,7 +518,7 @@ def do_slip_rate_inversion(vels, faults):
 
     G = build_model_matrix(vels, faults)
 
-    fault_rates = pd.Series(lsqr(G.values, vels.c.values)[0], 
+    fault_rates = pd.Series(lsqr(G.values, vels.c.values, damp=damp)[0], 
                             index=faults.index)
     c_mod = pd.Series(G.values.dot(fault_rates.values), index=vels.index)
 
